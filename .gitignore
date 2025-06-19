@@ -1,0 +1,53 @@
+# Fichiers de configuration sensibles
+.env
+.env.local
+.env.production
+
+# Dossiers de dépendances
+/vendor/
+/node_modules/
+
+# Fichiers de logs
+/logs/*.log
+/logs/*.txt
+*.log
+
+# Fichiers temporaires
+*.tmp
+*.temp
+/temp/
+
+# Cache et sessions
+/cache/
+/sessions/
+
+# Fichiers de l'IDE
+.vscode/
+.idea/
+*.sublime-*
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Fichiers de sauvegarde
+*.bak
+*.backup
+*.old
+
+# Fichiers de configuration Apache locaux
+.htaccess.local
+.htaccess.production
+
+# Fichiers uploadés par les utilisateurs
+/public/uploads/
+/public/assets/images/profiles/
+
+# Composer
+composer.lock
+
+# Base de données locale
+*.sql.backup
+/database/backups/

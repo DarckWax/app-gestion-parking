@@ -1,0 +1,29 @@
+{
+  "name": "parkfinder",
+  "version": "1.0.0",
+  "description": "Système de gestion de parking intelligent",
+  "main": "public/index.php",
+  "scripts": {
+    "serve": "php -S localhost:8000 -t public",
+    "dev": "php -S localhost:8000 -t public",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/votre-username/parkfinder.git"
+  },
+  "keywords": [
+    "parking",
+    "management",
+    "php",
+    "mysql",
+    "paypal",
+    "reservation"
+  ],
+  "author": "Votre Nom",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/votre-username/parkfinder/issues"
+  },
+  "homepage": "https://github.com/votre-username/parkfinder#readme"
+}
