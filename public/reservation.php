@@ -54,10 +54,6 @@ if ($dbConnected) {
         // Garder le tableau vide
     }
 }
-
-// Ajouter le middleware pour les vérifications
-require_once '../app/middlewares/AdminMiddleware.php';
-use App\Middlewares\AdminMiddleware;
 ?>
 <!DOCTYPE html>
 <html lang="fr">
@@ -1388,10 +1384,10 @@ use App\Middlewares\AdminMiddleware;
         breakdownDiv.innerHTML = '<strong>Détail par période tarifaire :</strong>';
         
         const periodLabels = {
-            'weekday_day': 'Semaine jour (6h-18h)',
-            'weekday_night': 'Semaine nuit (18h-6h)',
-            'weekend_day': 'Weekend jour (6h-20h)',
-            'weekend_night': 'Weekend nuit (20h-6h)'
+            'weekday_day': '📅 Semaine jour (6h-18h)',
+            'weekday_night': '🌙 Semaine nuit (18h-6h)',
+            'weekend_day': '🌞 Weekend jour (6h-20h)',
+            'weekend_night': '🌜 Weekend nuit (20h-6h)'
         };
         
         for (const [period, data] of Object.entries(periodBreakdown)) {

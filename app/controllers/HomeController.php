@@ -9,7 +9,6 @@ class HomeController extends Controller
     public function index()
     {
         try {
-            // Test simple de la base de données
             $testQuery = $this->db->fetch("SELECT 'OK' as status");
             
             echo "<h1>🎉 ParkFinder - Système de Parking</h1>";

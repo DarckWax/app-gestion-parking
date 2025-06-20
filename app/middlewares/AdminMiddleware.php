@@ -22,9 +22,8 @@ class AdminMiddleware
             header('Location: index.php?error=not_logged_in');
             exit;
         }
-        
-        // Vérifier le rôle admin
-        $userRole = $_SESSION['user_role'] ?? '';
+          // Vérifier le rôle admin
+        $userRole = $_SESSION['role'] ?? '';
         if ($userRole !== 'admin') {
             self::showAccessDeniedPage();
             exit;
@@ -32,8 +31,7 @@ class AdminMiddleware
         
         return true;
     }
-    
-    /**
+      /**
      * Vérifie si l'utilisateur est admin sans redirection
      */
     public static function isAdmin()
@@ -42,7 +40,7 @@ class AdminMiddleware
             session_start();
         }
         
-        return isset($_SESSION['user_id']) && ($_SESSION['user_role'] ?? '') === 'admin';
+        return isset($_SESSION['user_id']) && ($_SESSION['role'] ?? '') === 'admin';
     }
     
     /**
@@ -60,42 +58,54 @@ class AdminMiddleware
             <title>Accès refusé - ParkFinder</title>
             <style>
                 body {
-                    font-family: Arial, sans-serif;
-                    background: #f8f9fa;
+                    font-family: 'Inter', Arial, sans-serif;
+                    background: linear-gradient(135deg, #111827 0%, #1F2937 50%, #10B981 100%);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     min-height: 100vh;
                     margin: 0;
+                    color: white;
                 }
                 .error-container {
-                    background: white;
-                    padding: 2rem;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    background: rgba(255, 255, 255, 0.95);
+                    backdrop-filter: blur(20px);
+                    padding: 3rem;
+                    border-radius: 1.5rem;
+                    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                     text-align: center;
                     max-width: 500px;
+                    color: #111827;
                 }
                 .error-icon {
                     font-size: 4rem;
-                    color: #dc3545;
-                    margin-bottom: 1rem;
+                    margin-bottom: 1.5rem;
                 }
                 .error-title {
+                    font-size: 2rem;
+                    font-weight: 800;
                     color: #dc3545;
                     margin-bottom: 1rem;
+                    font-family: 'Space Grotesk', sans-serif;
                 }
                 .error-message {
-                    color: #6c757d;
+                    color: #6B7280;
                     margin-bottom: 2rem;
+                    line-height: 1.6;
                 }
                 .btn {
-                    background: #007bff;
+                    background: linear-gradient(135deg, #10B981, #059669);
                     color: white;
-                    padding: 0.75rem 1.5rem;
+                    padding: 0.75rem 2rem;
                     text-decoration: none;
-                    border-radius: 4px;
+                    border-radius: 0.75rem;
                     display: inline-block;
+                    font-weight: 600;
+                    transition: all 0.3s ease;
+                }
+                .btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3);
                 }
             </style>
         </head>
@@ -105,9 +115,9 @@ class AdminMiddleware
                 <h1 class="error-title">Accès refusé</h1>
                 <p class="error-message">
                     Vous n'avez pas les permissions nécessaires pour accéder au tableau de bord administrateur.
-                    <br>Seuls les comptes administrateurs peuvent accéder à cette section.
+                    <br><br>Seuls les comptes administrateurs peuvent accéder à cette section.
                 </p>
-                <a href="index.php" class="btn">Retour à l'accueil</a>
+                <a href="index.php" class="btn">← Retour à l'accueil</a>
             </div>
         </body>
         </html>

@@ -8,9 +8,6 @@ use App\Utils\Security;
 use App\Utils\Validator;
 use App\Utils\Logger;
 
-/**
- * Authentication Controller
- */
 class AuthController extends Controller
 {
     private $userModel;
@@ -45,13 +42,11 @@ class AuthController extends Controller
         $password = $_POST['password'] ?? '';
         $rememberMe = isset($_POST['remember_me']);
         
-        // Rate limiting
         if (!Security::rateLimitCheck($email, 5, 900)) {
             $this->flash('error', 'Too many login attempts. Please try again later.');
             $this->redirect('/login');
         }
         
-        // Validation
         $validator = new Validator($_POST);
         $validator->required('email')->email('email')
                  ->required('password');
@@ -61,7 +56,6 @@ class AuthController extends Controller
             $this->redirect('/login');
         }
         
-        // Authenticate user
         $user = $this->userModel->findByEmail($email);
         
         if (!$user || !Security::verifyPassword($password, $user['password_hash'])) {
@@ -75,13 +69,11 @@ class AuthController extends Controller
             $this->redirect('/login');
         }
         
-        // Create session
         $_SESSION['user_id'] = $user['user_id'];
         $_SESSION['user_email'] = $user['email'];
         $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
         $_SESSION['user_role'] = $user['role'];
         
-        // Update last login
         $this->userModel->updateLastLogin($user['user_id']);
         
         Logger::info('User logged in', ['user_id' => $user['user_id'], 'email' => $email]);
@@ -112,7 +104,6 @@ class AuthController extends Controller
             $this->redirect('/dashboard');
         }
         
-        // Validation
         $validator = new Validator($_POST);
         $validator->required('first_name')->max('first_name', 50)
                  ->required('last_name')->max('last_name', 50)
@@ -126,13 +117,11 @@ class AuthController extends Controller
             $this->redirect('/register');
         }
         
-        // Check password confirmation
         if ($_POST['password'] !== $_POST['password_confirm']) {
             $this->flash('error', 'Password confirmation does not match');
             $this->redirect('/register');
         }
         
-        // Create user
         try {
             $userData = [
                 'first_name' => Security::sanitizeInput($_POST['first_name']),

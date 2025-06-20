@@ -10,9 +10,6 @@ use App\Utils\Security;
 use App\Utils\Validator;
 use App\Utils\Logger;
 
-/**
- * Payment Controller - Handle payment processing with PayPal DEMO MODE
- */
 class PaymentController extends Controller
 {
     private $paymentModel;
@@ -25,13 +22,12 @@ class PaymentController extends Controller
         $this->paymentModel = new Payment();
         $this->reservationModel = new Reservation();
         
-        // PayPal Demo Configuration
         $this->paypalConfig = [
             'client_id' => $_ENV['PAYPAL_CLIENT_ID'] ?? 'AZDxjDScFpQtjWTOUtWKbyN_bDt4OgqaF4eYXlewfBP4-8aqX3PiV8e1GWU6liB2CUXlkA59kJXE7M6R',
             'client_secret' => $_ENV['PAYPAL_CLIENT_SECRET'] ?? 'demo_secret',
-            'mode' => 'sandbox', // Force sandbox mode for demo
-            'api_url' => 'https://api.sandbox.paypal.com', // Always use sandbox
-            'web_url' => 'https://www.sandbox.paypal.com', // Sandbox web URL
+            'mode' => 'sandbox', 
+            'api_url' => 'https://api.sandbox.paypal.com', 
+            'web_url' => 'https://www.sandbox.paypal.com', 
             'demo_mode' => true
         ];
     }
@@ -47,13 +43,13 @@ class PaymentController extends Controller
             $this->redirect('/reservations');
         }
         
-        // Check if user owns this reservation
+
         if ($reservation['user_id'] != $_SESSION['user_id'] && !$this->isAdmin()) {
             $this->flash('error', 'Access denied');
             $this->redirect('/reservations');
         }
         
-        // Check if payment is still pending
+
         if ($reservation['payment_status'] !== 'pending') {
             $this->flash('error', 'Payment already processed');
             $this->redirect("/reservation/{$reservationId}");
@@ -63,7 +59,7 @@ class PaymentController extends Controller
             'title' => 'Payment - Reservation #' . $reservation['reservation_code'],
             'reservation' => $reservation,
             'paypal_client_id' => $this->paypalConfig['client_id'],
-            'paypal_mode' => 'sandbox', // Always sandbox for demo
+            'paypal_mode' => 'sandbox', 
             'is_demo' => true,
             'demo_accounts' => [
                 'buyer_email' => $_ENV['PAYPAL_DEMO_BUYER_EMAIL'] ?? 'sb-buyer@business.example.com',
@@ -79,7 +75,7 @@ class PaymentController extends Controller
         $this->requireAuth();
         $this->validateCSRF();
         
-        // Validation
+
         $validator = new Validator($_POST);
         $validator->required('reservation_id')->numeric('reservation_id')
                  ->required('payment_method')
@@ -96,18 +92,18 @@ class PaymentController extends Controller
         try {
             $this->db->beginTransaction();
             
-            // Get reservation details
+
             $reservation = $this->reservationModel->find($reservationId);
             if (!$reservation || $reservation['user_id'] != $_SESSION['user_id']) {
                 throw new \Exception('Invalid reservation');
             }
             
-            // Verify amount matches reservation
+
             if (abs($amount - $reservation['total_amount']) > 0.01) {
                 throw new \Exception('Payment amount mismatch');
             }
             
-            // Process payment based on method
+
             $paymentResult = null;
             switch ($paymentMethod) {
                 case 'paypal':
@@ -120,7 +116,7 @@ class PaymentController extends Controller
                     throw new \Exception('Unsupported payment method');
             }
             
-            // Create payment record
+
             $paymentData = [
                 'reservation_id' => $reservationId,
                 'user_id' => $_SESSION['user_id'],

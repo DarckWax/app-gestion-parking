@@ -16,6 +16,8 @@ $config = [
 ];
 
 $reservationId = $_GET['reservation_id'] ?? null;
+$format = $_GET['format'] ?? 'pdf'; // pdf ou html
+$download = $_GET['download'] ?? '1'; // forcer le téléchargement
 
 if (!$reservationId) {
     http_response_code(400);
@@ -49,8 +51,12 @@ try {
         exit('Réservation non trouvée ou non payée');
     }
     
-    // Générer le reçu directement
-    generateReceiptHTML($reservation);
+    // Générer le reçu selon le format demandé
+    if ($format === 'pdf') {
+        generateReceiptPDF($reservation, $download);
+    } else {
+        generateReceiptHTML($reservation);
+    }
     
 } catch (Exception $e) {
     error_log("Erreur génération reçu: " . $e->getMessage());
@@ -59,10 +65,87 @@ try {
 }
 
 /**
- * Génère et affiche le reçu HTML optimisé
+ * Génère et affiche le reçu PDF
  */
-function generateReceiptHTML($reservation) {
-    // Types de places pré-définis pour éviter les conditions
+function generateReceiptPDF($reservation, $forceDownload = true) {
+    // Vérifier si TCPDF est disponible
+    if (!class_exists('TCPDF')) {
+        // Essayer d'inclure TCPDF depuis différents emplacements possibles
+        $tcpdfPaths = [
+            __DIR__ . '/vendor/tecnickcom/tcpdf/tcpdf.php',
+            __DIR__ . '/../vendor/tecnickcom/tcpdf/tcpdf.php',
+            __DIR__ . '/tcpdf/tcpdf.php'
+        ];
+        
+        $tcpdfLoaded = false;
+        foreach ($tcpdfPaths as $path) {
+            if (file_exists($path)) {
+                require_once $path;
+                $tcpdfLoaded = true;
+                break;
+            }
+        }
+        
+        if (!$tcpdfLoaded) {
+            // Si TCPDF n'est pas disponible, générer un HTML avec message
+            generateReceiptHTML($reservation, true);
+            return;
+        }
+    }
+    
+    try {
+        // Configuration TCPDF
+        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+        
+        // Métadonnées du PDF
+        $pdf->SetCreator('ParkFinder');
+        $pdf->SetAuthor('ParkFinder System');
+        $pdf->SetTitle('Reçu de parking - ' . $reservation['reservation_code']);
+        $pdf->SetSubject('Reçu de paiement');
+        
+        // Supprimer header et footer par défaut
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+        
+        // Marges
+        $pdf->SetMargins(15, 15, 15);
+        $pdf->SetAutoPageBreak(true, 15);
+        
+        // Ajouter une page
+        $pdf->AddPage();
+        
+        // Contenu HTML du reçu
+        $html = generatePDFContent($reservation);
+        
+        // CSS pour le PDF
+        $css = getPDFStyles();
+        
+        // Écrire le HTML avec CSS
+        $pdf->writeHTML('<style>' . $css . '</style>' . $html, true, false, true, false, '');
+        
+        // Nom du fichier
+        $filename = 'Recu_ParkFinder_' . $reservation['reservation_code'] . '.pdf';
+        
+        // Sortie du PDF
+        if ($forceDownload) {
+            $pdf->Output($filename, 'D'); // Force le téléchargement
+        } else {
+            $pdf->Output($filename, 'I'); // Affichage dans le navigateur
+        }
+        
+    } catch (Exception $e) {
+        error_log("Erreur génération PDF: " . $e->getMessage());
+        
+        // Fallback vers HTML en cas d'erreur
+        generateReceiptHTML($reservation, true);
+    }
+}
+
+/**
+ * Génère le contenu HTML pour PDF
+ */
+function generatePDFContent($reservation) {
+    // Types de places
     $typeLabels = [
         'standard' => 'Standard',
         'disabled' => 'PMR',
@@ -75,289 +158,258 @@ function generateReceiptHTML($reservation) {
     $currentDate = date('d/m/Y à H:i');
     $startDate = date('d/m/Y à H:i', strtotime($reservation['start_datetime']));
     $endDate = date('d/m/Y à H:i', strtotime($reservation['end_datetime']));
-    $paymentDate = $reservation['processed_at'] ? date('d/m/Y à H:i', strtotime($reservation['processed_at'])) : date('d/m/Y à H:i', strtotime($reservation['created_at']));
+    $paymentDate = $reservation['processed_at'] ? 
+        date('d/m/Y à H:i', strtotime($reservation['processed_at'])) : 
+        date('d/m/Y à H:i', strtotime($reservation['created_at']));
     
-    // Headers pour téléchargement
-    header('Content-Type: text/html; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="Recu_ParkFinder_' . $reservation['reservation_code'] . '.html"');
-    header('Cache-Control: no-cache, must-revalidate');
-    header('Content-Length: ' . strlen(getReceiptContent($reservation, $spotTypeLabel, $currentDate, $startDate, $endDate, $paymentDate)));
+    // Calculs financiers
+    $montantHT = $reservation['total_amount'];
+    $montantTVA = $montantHT * 0.2;
+    $montantTTC = $montantHT + $montantTVA;
     
-    echo getReceiptContent($reservation, $spotTypeLabel, $currentDate, $startDate, $endDate, $paymentDate);
-}
-
-/**
- * Génère le contenu HTML du reçu (optimisé)
- */
-function getReceiptContent($r, $spotTypeLabel, $currentDate, $startDate, $endDate, $paymentDate) {
-    $htAmount = number_format($r['total_amount'], 2, ',', ' ');
-    $tvaAmount = number_format($r['total_amount'] * 0.2, 2, ',', ' ');
-    $ttcAmount = number_format($r['total_amount'] * 1.2, 2, ',', ' ');
-    $vehiclePlate = $r['vehicle_plate'] ? '<div class="row"><span>Véhicule:</span><span>' . htmlspecialchars($r['vehicle_plate']) . '</span></div>' : '';
-    
-    return '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Reçu ParkFinder</title><style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font:14px Arial,sans-serif;color:#333;max-width:800px;margin:0 auto;padding:20px;line-height:1.4}
-.header{text-align:center;border-bottom:3px solid #10B981;padding-bottom:20px;margin-bottom:30px}
-.logo{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:15px}
-.logo-icon{width:48px;height:48px;background:linear-gradient(135deg,#10B981,#059669);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:bold;color:white;box-shadow:0 4px 12px rgba(16,185,129,0.3)}
-.logo-text{font-size:32px;font-weight:bold;color:#10B981}
-.title{font-size:24px;color:#111827;font-weight:bold}
-.section{margin-bottom:25px;page-break-inside:avoid}
-.section-title{font-size:16px;font-weight:bold;color:#059669;margin-bottom:15px;border-bottom:2px solid #D1D5DB;padding-bottom:5px}
-.row{display:flex;justify-content:space-between;margin-bottom:8px;padding:5px 0}
-.row span:first-child{font-weight:500;color:#4B5563}
-.row span:last-child{font-weight:600;color:#111827;text-align:right}
-.total{background:#ECFDF5;padding:15px;border-radius:8px;margin-top:15px;border:2px solid #10B981}
-.total .amount{font-size:20px;font-weight:bold;color:#059669}
-.stamp{background:#ECFDF5;border:3px solid #10B981;padding:15px;text-align:center;margin:20px 0;border-radius:8px;font-weight:bold}
-.footer{margin-top:40px;text-align:center;font-size:12px;color:#6B7280;border-top:1px solid #D1D5DB;padding-top:20px}
-.print-info{background:#F3F4F6;padding:15px;border-radius:8px;margin:20px 0;text-align:center;font-size:14px}
-@media print{.print-info{display:none}body{margin:0}}
-</style></head><body>
-<div class="print-info"><strong>📄 Reçu téléchargé avec succès !</strong><br><small>Vous pouvez imprimer ce document en utilisant Ctrl+P ou le sauvegarder en PDF.</small></div>
-<div class="header">
-<div class="logo"><div class="logo-icon">P</div><div class="logo-text">ParkFinder</div></div>
-<div class="title">REÇU DE PAIEMENT</div>
-<div style="font-size:14px;margin-top:10px;color:#6B7280">Système de gestion de parking intelligent</div>
-</div>
-<div class="section">
-<div class="section-title">🎫 Informations de la réservation</div>
-<div class="row"><span>Code de réservation:</span><span>' . htmlspecialchars($r['reservation_code']) . '</span></div>
-<div class="row"><span>Date d\'émission:</span><span>' . $currentDate . '</span></div>
-<div class="row"><span>Statut:</span><span style="color:#059669">✅ Payé et confirmé</span></div>
-</div>
-<div class="section">
-<div class="section-title">Informations client</div>
-<div class="row"><span>Nom complet:</span><span>' . htmlspecialchars($r['first_name'] . ' ' . $r['last_name']) . '</span></div>
-<div class="row"><span>Email:</span><span>' . htmlspecialchars($r['email']) . '</span></div>
-<div class="row"><span>Téléphone:</span><span>' . htmlspecialchars($r['phone']) . '</span></div>
-</div>
-<div class="section">
-<div class="section-title">Détails de la place de parking</div>
-<div class="row"><span>Numéro de place:</span><span>' . htmlspecialchars($r['spot_number']) . '</span></div>
-<div class="row"><span>Type de place:</span><span>' . $spotTypeLabel . '</span></div>
-<div class="row"><span>Zone:</span><span>Zone ' . htmlspecialchars($r['zone_section']) . ', Niveau ' . $r['floor_level'] . '</span></div>
-</div>
-<div class="section">
-<div class="section-title">Période de stationnement</div>
-<div class="row"><span>Date et heure de début:</span><span>' . $startDate . '</span></div>
-<div class="row"><span>Date et heure de fin:</span><span>' . $endDate . '</span></div>
-<div class="row"><span>Durée totale:</span><span>' . $r['duration_hours'] . ' heure(s)</span></div>
-' . $vehiclePlate . '
-</div>
-<div class="section">
-<div class="section-title">Détails du paiement</div>
-<div class="row"><span>Moyen de paiement:</span><span>' . ucfirst($r['payment_method'] ?? 'PayPal') . '</span></div>
-<div class="row"><span>ID de transaction:</span><span>' . htmlspecialchars($r['transaction_id'] ?? 'N/A') . '</span></div>
-<div class="row"><span>Date de paiement:</span><span>' . $paymentDate . '</span></div>
-<div class="total">
-<div class="row"><span>Montant HT:</span><span>' . $htAmount . ' €</span></div>
-<div class="row"><span>TVA (20%):</span><span>' . $tvaAmount . ' €</span></div>
-<div class="row amount"><span>TOTAL TTC:</span><span>' . $ttcAmount . ' €</span></div>
-</div>
-</div>
-<div class="stamp">✅ DOCUMENT PAYÉ ET VALIDÉ<br><small style="font-weight:normal">Ce reçu fait foi de paiement pour la réservation ' . htmlspecialchars($r['reservation_code']) . '</small></div>
-<div class="footer">
-<p><strong>ParkFinder - Système de gestion de parking</strong></p>
-<p>📧 support@parkfinder.com | 📞 +33 1 23 45 67 89</p>
-<p>Document généré automatiquement le ' . $currentDate . '</p>
-</div>
-<script>window.onload=function(){if(confirm("Voulez-vous imprimer ce reçu maintenant ?")){window.print()}}</script>
-</body></html>';
-}
-?>
-            .total-amount { 
-                font-size: 20px; 
-                font-weight: bold; 
-                color: #059669; 
-            }
-            .footer { 
-                margin-top: 40px; 
-                text-align: center; 
-                font-size: 12px; 
-                color: #6B7280; 
-                border-top: 1px solid #D1D5DB; 
-                padding-top: 20px; 
-            }
-            .stamp { 
-                background: #ECFDF5; 
-                border: 3px solid #10B981; 
-                padding: 15px; 
-                text-align: center; 
-                margin: 20px 0; 
-                border-radius: 8px; 
-                font-weight: bold;
-            }
-            .print-info {
-                background: #F3F4F6;
-                padding: 15px;
-                border-radius: 8px;
-                margin: 20px 0;
-                text-align: center;
-                font-size: 14px;
-            }
-            @media print {
-                .print-info { display: none; }
-                body { margin: 0; }
-            }
-        </style>
-    </head>
-    <body>
-        <div class="print-info">
-            <strong>📄 Reçu téléchargé avec succès !</strong><br>
-            <small>Vous pouvez imprimer ce document en utilisant Ctrl+P ou le sauvegarder en PDF.</small>
-        </div>
-        
+    $html = '
+    <div class="receipt-container">
+        <!-- En-tête -->
         <div class="header">
             <div class="logo">
                 <div class="logo-icon">P</div>
                 <div class="logo-text">ParkFinder</div>
             </div>
-            <div class="receipt-title">REÇU DE PAIEMENT</div>
-            <div style="font-size: 14px; margin-top: 10px; color: #6B7280;">Système de gestion de parking intelligent</div>
+            <h1 class="receipt-title">REÇU DE PAIEMENT</h1>
+            <p class="header-subtitle">Système de gestion de parking intelligent</p>
         </div>
         
+        <!-- Informations de la réservation -->
         <div class="section">
-            <div class="section-title">🎫 Informations de la réservation</div>
-            <div class="detail-row">
-                <span class="detail-label">Code de réservation:</span>
-                <span class="detail-value">' . htmlspecialchars($reservation['reservation_code']) . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Date d\'émission:</span>
-                <span class="detail-value">' . date('d/m/Y à H:i') . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Statut:</span>
-                <span class="detail-value" style="color: #059669;">✅ Payé et confirmé</span>
-            </div>
+            <h2 class="section-title">🎫 Informations de la réservation</h2>
+            <table class="detail-table">
+                <tr>
+                    <td class="detail-label">Code de réservation:</td>
+                    <td class="detail-value"><strong>' . htmlspecialchars($reservation['reservation_code']) . '</strong></td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Date d\'émission:</td>
+                    <td class="detail-value">' . $currentDate . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Statut:</td>
+                    <td class="detail-value success-text">✅ Payé et confirmé</td>
+                </tr>
+            </table>
         </div>
         
+        <!-- Informations client -->
         <div class="section">
-            <div class="section-title">👤 Informations client</div>
-            <div class="detail-row">
-                <span class="detail-label">Nom complet:</span>
-                <span class="detail-value">' . htmlspecialchars($reservation['first_name'] . ' ' . $reservation['last_name']) . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Email:</span>
-                <span class="detail-value">' . htmlspecialchars($reservation['email']) . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Téléphone:</span>
-                <span class="detail-value">' . htmlspecialchars($reservation['phone']) . '</span>
-            </div>
+            <h2 class="section-title">👤 Informations client</h2>
+            <table class="detail-table">
+                <tr>
+                    <td class="detail-label">Nom complet:</td>
+                    <td class="detail-value">' . htmlspecialchars($reservation['first_name'] . ' ' . $reservation['last_name']) . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Email:</td>
+                    <td class="detail-value">' . htmlspecialchars($reservation['email']) . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Téléphone:</td>
+                    <td class="detail-value">' . htmlspecialchars($reservation['phone']) . '</td>
+                </tr>
+            </table>
         </div>
         
+        <!-- Détails de la place -->
         <div class="section">
-            <div class="section-title">🅿️ Détails de la place de parking</div>
-            <div class="detail-row">
-                <span class="detail-label">Numéro de place:</span>
-                <span class="detail-value">' . htmlspecialchars($reservation['spot_number']) . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Type de place:</span>
-                <span class="detail-value">' . $spotTypeLabel . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Zone:</span>
-                <span class="detail-value">Zone ' . htmlspecialchars($reservation['zone_section']) . ', Niveau ' . $reservation['floor_level'] . '</span>
-            </div>
+            <h2 class="section-title">🅿️ Détails de la place de parking</h2>
+            <table class="detail-table">
+                <tr>
+                    <td class="detail-label">Numéro de place:</td>
+                    <td class="detail-value"><strong>' . htmlspecialchars($reservation['spot_number']) . '</strong></td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Type de place:</td>
+                    <td class="detail-value">' . $spotTypeLabel . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Zone:</td>
+                    <td class="detail-value">Zone ' . htmlspecialchars($reservation['zone_section']) . ', Niveau ' . $reservation['floor_level'] . '</td>
+                </tr>
+            </table>
         </div>
         
+        <!-- Période de stationnement -->
         <div class="section">
-            <div class="section-title">⏰ Période de stationnement</div>
-            <div class="detail-row">
-                <span class="detail-label">Date et heure de début:</span>
-                <span class="detail-value">' . date('d/m/Y à H:i', strtotime($reservation['start_datetime'])) . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Date et heure de fin:</span>
-                <span class="detail-value">' . date('d/m/Y à H:i', strtotime($reservation['end_datetime'])) . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Durée totale:</span>
-                <span class="detail-value">' . $reservation['duration_hours'] . ' heure(s)</span>
-            </div>';
+            <h2 class="section-title">⏰ Période de stationnement</h2>
+            <table class="detail-table">
+                <tr>
+                    <td class="detail-label">Date et heure de début:</td>
+                    <td class="detail-value">' . $startDate . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Date et heure de fin:</td>
+                    <td class="detail-value">' . $endDate . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Durée totale:</td>
+                    <td class="detail-value"><strong>' . $reservation['duration_hours'] . ' heure(s)</strong></td>
+                </tr>';
     
     if ($reservation['vehicle_plate']) {
-        echo '<div class="detail-row">
-                <span class="detail-label">Véhicule:</span>
-                <span class="detail-value">' . htmlspecialchars($reservation['vehicle_plate']) . '</span>
-            </div>';
+        $html .= '<tr>
+                    <td class="detail-label">Véhicule:</td>
+                    <td class="detail-value">' . htmlspecialchars($reservation['vehicle_plate']) . '</td>
+                </tr>';
     }
     
-    echo '</div>
+    $html .= '
+            </table>
+        </div>
         
+        <!-- Détails du paiement -->
         <div class="section">
-            <div class="section-title">💰 Détails du paiement</div>
-            <div class="detail-row">
-                <span class="detail-label">Moyen de paiement:</span>
-                <span class="detail-value">' . ucfirst($reservation['payment_method'] ?? 'PayPal') . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">ID de transaction:</span>
-                <span class="detail-value">' . htmlspecialchars($reservation['transaction_id'] ?? 'N/A') . '</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Date de paiement:</span>
-                <span class="detail-value">' . ($reservation['processed_at'] ? date('d/m/Y à H:i', strtotime($reservation['processed_at'])) : date('d/m/Y à H:i', strtotime($reservation['created_at']))) . '</span>
-            </div>
+            <h2 class="section-title">💰 Détails du paiement</h2>
+            <table class="detail-table">
+                <tr>
+                    <td class="detail-label">Moyen de paiement:</td>
+                    <td class="detail-value">' . ucfirst($reservation['payment_method'] ?? 'PayPal') . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">ID de transaction:</td>
+                    <td class="detail-value">' . htmlspecialchars($reservation['transaction_id'] ?? 'N/A') . '</td>
+                </tr>
+                <tr>
+                    <td class="detail-label">Date de paiement:</td>
+                    <td class="detail-value">' . $paymentDate . '</td>
+                </tr>
+            </table>
             
-            <div class="total-row">
-                <div class="detail-row">
-                    <span class="detail-label">Montant HT:</span>
-                    <span class="detail-value">' . number_format($reservation['total_amount'], 2, ',', ' ') . ' €</span>
-                </div>
-                <div class="detail-row">
-                    <span class="detail-label">TVA (20%):</span>
-                    <span class="detail-value">' . number_format($reservation['total_amount'] * 0.2, 2, ',', ' ') . ' €</span>
-                </div>
-                <div class="detail-row total-amount">
-                    <span>TOTAL TTC:</span>
-                    <span>' . number_format($reservation['total_amount'] * 1.2, 2, ',', ' ') . ' €</span>
-                </div>
+            <!-- Totaux -->
+            <div class="total-section">
+                <table class="total-table">
+                    <tr>
+                        <td class="total-label">Montant HT:</td>
+                        <td class="total-value">' . number_format($montantHT, 2, ',', ' ') . ' €</td>
+                    </tr>
+                    <tr>
+                        <td class="total-label">TVA (20%):</td>
+                        <td class="total-value">' . number_format($montantTVA, 2, ',', ' ') . ' €</td>
+                    </tr>
+                    <tr class="total-final">
+                        <td class="total-label"><strong>TOTAL TTC:</strong></td>
+                        <td class="total-value"><strong>' . number_format($montantTTC, 2, ',', ' ') . ' €</strong></td>
+                    </tr>
+                </table>
             </div>
         </div>
         
+        <!-- Tampon de validation -->
         <div class="stamp">
-            ✅ DOCUMENT PAYÉ ET VALIDÉ<br>
-            <small style="font-weight: normal;">Ce reçu fait foi de paiement pour la réservation ' . htmlspecialchars($reservation['reservation_code']) . '</small>
+            <div class="stamp-icon">✅</div>
+            <div class="stamp-text">DOCUMENT PAYÉ ET VALIDÉ</div>
+            <div class="stamp-subtitle">Ce reçu fait foi de paiement pour la réservation ' . htmlspecialchars($reservation['reservation_code']) . '</div>
         </div>
         
+        <!-- Pied de page -->
         <div class="footer">
-            <p><strong>
-                <span style="display: inline-flex; align-items: center; justify-content: center;">
-                    <span style="
-                        display: inline-flex;
-                        width: 20px;
-                        height: 20px;
-                        background: linear-gradient(135deg, #10B981, #059669);
-                        border-radius: 4px;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-size: 12px;
-                        font-weight: 800;
-                        margin-right: 8px;
-                    ">P</span>
-                    ParkFinder - Système de gestion de parking
-                </span>
-            </strong></p>
+            <div class="footer-logo">
+                <div class="footer-logo-icon">P</div>
+                <strong>ParkFinder - Système de gestion de parking</strong>
+            </div>
             <p>📧 support@parkfinder.com | 📞 +33 1 23 45 67 89</p>
-            <p>Document généré automatiquement le ' . date('d/m/Y à H:i:s') . '</p>
+            <p>Document généré automatiquement le ' . $currentDate . '</p>
+            <p style="margin-top: 10px; font-size: 10px;">Ce document est un reçu officiel de paiement.</p>
         </div>
-        
-        <script>
-            // Proposer l\'impression automatiquement
-            window.onload = function() {
-                if (confirm("Voulez-vous imprimer ce reçu maintenant ?")) {
-                    window.print();
-                }
-            }
-        </script>
+    </div>';
+    
+    return $html;
+}
+
+/**
+ * Retourne les styles CSS pour PDF
+ */
+function getPDFStyles() {
+    return '
+    body { font-family: DejaVu Sans, Arial, sans-serif; font-size: 11px; color: #333; line-height: 1.4; }
+    .receipt-container { max-width: 100%; }
+    .header { text-align: center; border-bottom: 3px solid #10B981; padding-bottom: 15px; margin-bottom: 20px; }
+    .logo { margin-bottom: 10px; }
+    .logo-icon { display: inline-block; width: 30px; height: 30px; background: #10B981; color: white; text-align: center; line-height: 30px; font-weight: bold; border-radius: 6px; margin-right: 8px; }
+    .logo-text { display: inline-block; font-size: 24px; font-weight: bold; color: #10B981; vertical-align: top; }
+    .receipt-title { font-size: 20px; font-weight: bold; color: #111827; margin: 10px 0; }
+    .header-subtitle { font-size: 12px; color: #6B7280; font-style: italic; }
+    .section { margin-bottom: 20px; border: 1px solid #E5E7EB; border-radius: 6px; padding: 12px; }
+    .section-title { font-size: 14px; font-weight: bold; color: #059669; margin-bottom: 10px; border-bottom: 2px solid #D1D5DB; padding-bottom: 5px; }
+    .detail-table { width: 100%; border-collapse: collapse; }
+    .detail-table td { padding: 5px 0; border-bottom: 1px dotted #E5E7EB; }
+    .detail-label { width: 50%; font-weight: 500; color: #4B5563; }
+    .detail-value { width: 50%; font-weight: 600; color: #111827; text-align: right; }
+    .success-text { color: #059669; }
+    .total-section { background: #ECFDF5; padding: 12px; border-radius: 6px; margin-top: 10px; border: 2px solid #10B981; }
+    .total-table { width: 100%; border-collapse: collapse; }
+    .total-table td { padding: 4px 0; }
+    .total-label { font-weight: 500; color: #4B5563; }
+    .total-value { text-align: right; font-weight: 600; color: #111827; }
+    .total-final { border-top: 2px solid #10B981; padding-top: 6px; }
+    .total-final td { font-size: 14px; color: #059669; }
+    .stamp { background: #ECFDF5; border: 3px solid #10B981; padding: 15px; text-align: center; margin: 20px 0; border-radius: 8px; }
+    .stamp-icon { font-size: 24px; margin-bottom: 5px; }
+    .stamp-text { font-size: 14px; font-weight: bold; color: #059669; }
+    .stamp-subtitle { font-size: 10px; color: #4B5563; margin-top: 5px; }
+    .footer { text-align: center; font-size: 10px; color: #6B7280; border-top: 2px solid #D1D5DB; padding-top: 15px; margin-top: 20px; }
+    .footer-logo { margin-bottom: 5px; }
+    .footer-logo-icon { display: inline-block; width: 12px; height: 12px; background: #10B981; color: white; text-align: center; line-height: 12px; font-size: 8px; border-radius: 2px; margin-right: 4px; }
+    ';
+}
+
+/**
+ * Génère et affiche le reçu HTML (fallback)
+ */
+function generateReceiptHTML($reservation, $showTcpdfError = false) {
+    $typeLabels = [
+        'standard' => 'Standard',
+        'disabled' => 'PMR',
+        'electric' => 'Électrique', 
+        'reserved' => 'VIP',
+        'compact' => 'Compact'
+    ];
+    
+    $spotTypeLabel = $typeLabels[$reservation['spot_type']] ?? $reservation['spot_type'];
+    $currentDate = date('d/m/Y à H:i');
+    $startDate = date('d/m/Y à H:i', strtotime($reservation['start_datetime']));
+    $endDate = date('d/m/Y à H:i', strtotime($reservation['end_datetime']));
+    $paymentDate = $reservation['processed_at'] ? 
+        date('d/m/Y à H:i', strtotime($reservation['processed_at'])) : 
+        date('d/m/Y à H:i', strtotime($reservation['created_at']));
+    
+    // Headers pour affichage HTML
+    header('Content-Type: text/html; charset=UTF-8');
+    
+    echo '<!DOCTYPE html>
+    <html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reçu ParkFinder - ' . htmlspecialchars($reservation['reservation_code']) . '</title>
+        <link rel="stylesheet" href="assets/css/receipt.css">
+    </head>
+    <body>';
+    
+    if ($showTcpdfError) {
+        echo '<div class="print-info" style="background: #FEF3C7; border-color: #F59E0B; color: #92400E;">
+            <div class="print-info-title">⚠️ Génération PDF non disponible</div>
+            <div class="print-info-subtitle">TCPDF n\'est pas installé. Utilisez Ctrl+P pour imprimer cette page.</div>
+        </div>';
+    } else {
+        echo '<div class="print-info">
+            <div class="print-info-title">📄 Reçu généré avec succès !</div>
+            <div class="print-info-subtitle">Vous pouvez imprimer ce document en utilisant Ctrl+P ou le sauvegarder en PDF.</div>
+        </div>';
+    }
+    
+    echo generatePDFContent($reservation);
+    
+    echo '<script src="assets/js/receipt.js"></script>
     </body>
     </html>';
 }
 ?>
+

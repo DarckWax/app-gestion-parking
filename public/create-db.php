@@ -124,23 +124,6 @@ try {
         echo "</ul>";
     }
     
-    // Mise à jour de la table parking_spots si nécessaire
-    try {
-        $stmt = $pdo->query("SHOW COLUMNS FROM parking_spots LIKE 'hourly_rate'");
-        $columnExists = $stmt->fetch();
-        
-        if (!$columnExists) {
-            $pdo->exec("ALTER TABLE parking_spots ADD COLUMN hourly_rate DECIMAL(10,2) DEFAULT 2.50 AFTER status");
-            echo "<p>✅ Colonne hourly_rate ajoutée à la table parking_spots</p>";
-        }
-        
-        // Mettre à jour les places existantes avec des tarifs
-        $pdo->exec("UPDATE parking_spots SET hourly_rate = 2.50 WHERE hourly_rate IS NULL OR hourly_rate = 0");
-        
-    } catch (Exception $e) {
-        echo "<p>⚠️ Erreur lors de la mise à jour de la structure: " . $e->getMessage() . "</p>";
-    }
-    
     echo "<h2>🎉 Base de données créée avec succès!</h2>";
     echo "<div style='background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0;'>";
     echo "<h3 style='color: #2d5a2d; margin-top: 0;'>Prochaines étapes :</h3>";
@@ -149,23 +132,6 @@ try {
     echo "<li><a href='index.php' style='color: #2d5a2d;'>🏠 Retour à l'application</a></li>";
     echo "<li><a href='index.php#login' style='color: #2d5a2d;'>🔐 Tester la connexion admin</a></li>";
     echo "</ol>";
-    echo "</div>";
-    
-    echo "<p>✅ Base de données créée avec succès</p>";
-    echo "<p>✅ Tables créées avec succès</p>";
-    echo "<p>✅ Données de test insérées</p>";
-    
-    // Afficher les comptes créés
-    echo "<h2>📋 Comptes utilisateur créés :</h2>";
-    echo "<div style='background:#d4edda; padding:1rem; border-radius:5px; margin:1rem 0;'>";
-    echo "<strong>👑 Compte Administrateur :</strong><br>";
-    echo "Email: <code>admin@parkingsystem.com</code><br>";
-    echo "Mot de passe: <code>admin123</code><br><br>";
-    echo "<strong>👤 Comptes Utilisateurs de test :</strong><br>";
-    echo "Email: <code>marie.martin@email.com</code> | Mot de passe: <code>admin123</code><br>";
-    echo "Email: <code>pierre.dupont@email.com</code> | Mot de passe: <code>admin123</code><br>";
-    echo "Email: <code>sophie.bernard@email.com</code> | Mot de passe: <code>admin123</code><br>";
-    echo "Email: <code>lucas.moreau@email.com</code> | Mot de passe: <code>admin123</code>";
     echo "</div>";
     
 } catch(Exception $e) {

@@ -153,219 +153,21 @@ if ($_POST && !isset($error)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modifier la réservation - ParkFinder</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <title>Modifier la réservation - ParkFinder</title>    <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        // ...existing code... (mêmes styles que les autres pages)
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        :root {
-            --primary-green: #10B981;
-            --dark-green: #059669;
-            --pale-green: #ECFDF5;
-            --primary-black: #111827;
-            --gray-900: #1F2937;
-            --gray-700: #4B5563;
-            --gray-600: #6B7280;
-            --gray-300: #D1D5DB;
-            --gray-100: #F3F4F6;
-            --white: #FFFFFF;
-            --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        
-        body {
-            font-family: var(--font-primary);
-            background: linear-gradient(135deg, var(--primary-black) 0%, var(--gray-900) 100%);
-            min-height: 100vh;
-            color: var(--white);
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-        
-        .form-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 1.5rem;
-            padding: 2rem;
-            color: var(--primary-black);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-        }
-        
-        .form-title {
-            font-family: var(--font-display);
-            font-size: 2rem;
-            font-weight: 800;
-            text-align: center;
-            margin-bottom: 2rem;
-            color: var(--primary-green);
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--gray-700);
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 1rem;
-            border: 2px solid var(--gray-300);
-            border-radius: 0.75rem;
-            font-size: 1rem;
-            transition: border-color 0.3s ease;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: var(--primary-green);
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-        
-        .btn {
-            padding: 1rem 2rem;
-            border: none;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-        }
-        
-        .btn-primary {
-            background: var(--primary-green);
-            color: var(--white);
-        }
-        
-        .btn-primary:hover {
-            background: var(--dark-green);
-            transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: var(--gray-600);
-            color: var(--white);
-        }
-        
-        .message {
-            padding: 1rem;
-            border-radius: 0.75rem;
-            margin-bottom: 1rem;
-            font-weight: 500;
-        }
-        
-        .message.success {
-            background: var(--pale-green);
-            color: var(--dark-green);
-            border: 1px solid var(--primary-green);
-        }
-        
-        .message.error {
-            background: #FEE2E2;
-            color: #DC2626;
-            border: 1px solid #F87171;
-        }
-        
-        .reservation-info {
-            background: var(--gray-100);
-            padding: 1.5rem;
-            border-radius: 1rem;
-            margin-bottom: 2rem;
-        }
-        
-        .logo {
-            font-family: var(--font-display);
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--primary-black);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            transition: all 0.3s ease;
-        }
-        
-        .logo-icon {
-            width: 28px;
-            height: 28px;
-            margin-right: 0.75rem;
-            background: linear-gradient(135deg, var(--primary-green), var(--dark-green));
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--white);
-            font-size: 16px;
-            font-weight: 800;
-            box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3);
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .logo-icon::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            transform: rotate(45deg);
-            transition: all 0.5s ease;
-            opacity: 0;
-        }
-        
-        .logo:hover .logo-icon::before {
-            opacity: 1;
-            animation: shine 0.8s ease-in-out;
-        }
-        
-        .logo-text {
-            font-weight: 800;
-            background: linear-gradient(135deg, var(--primary-black), var(--gray-700));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .logo:hover {
-            transform: translateY(-1px);
-        }
-        
-        .logo:hover .logo-icon {
-            transform: scale(1.05);
-            box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
-        }
-        
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-        }
-    </style>
+    
+    <!-- Styles CSS -->
+    <link rel="stylesheet" href="assets/css/modify-reservation.css">
 </head>
 <body>
-    <div class="container">
-        <div class="form-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <a href="index.php" style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--primary-green); text-decoration: none;">🚗 ParkFinder</a>
-                <a href="my-reservations.php" style="color: var(--gray-700); text-decoration: none; font-weight: 500;">← Retour aux réservations</a>
+    <div class="container">        <div class="form-card">
+            <div class="header-nav">
+                <a href="index.php" class="logo">
+                    <div class="logo-icon">P</div>
+                    <span class="logo-text">ParkFinder</span>
+                </a>
+                <a href="my-reservations.php" class="back-link">← Retour aux réservations</a>
             </div>
             
             <h1 class="form-title">Modifier la réservation</h1>
@@ -418,15 +220,14 @@ if ($_POST && !isset($error)) {
                            value="<?= htmlspecialchars($reservation['vehicle_plate'] ?? '') ?>"
                            placeholder="AB-123-CD">
                 </div>
-                
-                <?php if ($reservation['payment_status'] === 'pending'): ?>
-                    <div style="background: #FEF3C7; color: #92400E; padding: 1rem; border-radius: 0.5rem; margin: 1rem 0;">
+                  <?php if ($reservation['payment_status'] === 'pending'): ?>
+                    <div class="payment-warning">
                         <strong>⚠️ Attention :</strong> Cette réservation est en attente de paiement. 
                         Après modification, vous devrez procéder au paiement pour confirmer la réservation.
                     </div>
                 <?php endif; ?>
                 
-                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                <div class="btn-group">
                     <button type="submit" class="btn btn-primary">Confirmer les modifications</button>
                     <a href="my-reservations.php" class="btn btn-secondary">Annuler</a>
                 </div>
@@ -437,24 +238,8 @@ if ($_POST && !isset($error)) {
                 </div>
             <?php endif; ?>
         </div>
-    </div>
-    
-    <script>
-        // Validation des dates côté client
-        document.getElementById('start_datetime').addEventListener('change', function() {
-            const endInput = document.getElementById('end_datetime');
-            const startValue = this.value;
-            
-            if (startValue) {
-                const minEndDate = new Date(startValue);
-                minEndDate.setHours(minEndDate.getHours() + 1);
-                endInput.min = minEndDate.toISOString().slice(0, 16);
-                
-                if (endInput.value && new Date(endInput.value) <= new Date(startValue)) {
-                    endInput.value = minEndDate.toISOString().slice(0, 16);
-                }
-            }
-        });
-    </script>
+    </div>    
+    <!-- Scripts JavaScript -->
+    <script src="assets/js/modify-reservation.js"></script>
 </body>
 </html>
