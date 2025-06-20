@@ -1,6 +1,3 @@
--- Script MySQL Simplifié pour Parking Management System
--- Exécutez ce script si vous avez des problèmes de permissions
-
 CREATE DATABASE IF NOT EXISTS parking_management_system 
 CHARACTER SET utf8mb4 
 COLLATE utf8mb4_unicode_ci;
@@ -49,7 +46,8 @@ CREATE TABLE IF NOT EXISTS parking_spots (
     description TEXT,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    hourly_rate DECIMAL(10,2) DEFAULT 2.50
 );
 
 -- 4. Table des règles de tarification
@@ -185,34 +183,53 @@ CREATE INDEX idx_reservations_datetime ON reservations(start_datetime, end_datet
 CREATE INDEX idx_payments_reservation ON payments(reservation_id);
 CREATE INDEX idx_notifications_user ON notifications(user_id);
 
--- Insertion des données par défaut
--- Utilisateur admin par défaut (mot de passe : admin123)
-INSERT INTO users (first_name, last_name, email, phone, password_hash, role, status, email_verified) 
-VALUES ('Admin', 'System', 'admin@parkingsystem.com', '+33123456789', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'active', TRUE);
+-- Insertion des données de test
+-- Utilisateurs (admin et utilisateurs normaux)
+INSERT INTO users (first_name, last_name, email, phone, password_hash, role, status, email_verified, phone_verified, created_at) VALUES
+-- Compte administrateur principal
+('Admin', 'System', 'admin@parkingsystem.com', '+33123456789', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'active', TRUE, TRUE, NOW()),
 
--- Places de parking d'exemple
-INSERT INTO parking_spots (spot_number, spot_type, status, floor_level, zone_section, description) VALUES
-('A001', 'standard', 'available', 1, 'A', 'Place standard rez-de-chaussée'),
-('A002', 'standard', 'available', 1, 'A', 'Place standard rez-de-chaussée'),
-('A003', 'disabled', 'available', 1, 'A', 'Place PMR avec accès facile'),
-('A004', 'electric', 'available', 1, 'A', 'Borne de recharge véhicule électrique'),
-('A005', 'standard', 'available', 1, 'A', 'Place standard rez-de-chaussée'),
-('B001', 'standard', 'available', 2, 'B', 'Place standard premier étage'),
-('B002', 'compact', 'available', 2, 'B', 'Place pour véhicule compact'),
-('B003', 'reserved', 'available', 2, 'B', 'Place réservée membres VIP'),
-('C001', 'standard', 'available', 1, 'C', 'Place près de l\'entrée'),
-('C002', 'standard', 'available', 1, 'C', 'Place près de l\'entrée');
+-- Comptes utilisateurs de test
+('Marie', 'Martin', 'marie.martin@email.com', '+33123456790', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', 'active', TRUE, FALSE, NOW()),
+('Pierre', 'Dupont', 'pierre.dupont@email.com', '+33123456791', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', 'active', TRUE, FALSE, NOW()),
+('Sophie', 'Bernard', 'sophie.bernard@email.com', '+33123456792', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', 'active', FALSE, FALSE, NOW()),
+('Lucas', 'Moreau', 'lucas.moreau@email.com', '+33123456793', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'user', 'active', TRUE, TRUE, NOW()),
 
--- Règles de tarification par défaut
-INSERT INTO pricing_rules (rule_name, spot_type, time_period, start_time, end_time, base_price, hourly_rate, daily_rate, max_duration_hours) VALUES
-('Standard Jour Semaine', 'standard', 'weekday_day', '06:00:00', '18:00:00', 2.00, 3.00, 25.00, 12),
-('Standard Nuit Semaine', 'standard', 'weekday_night', '18:00:00', '06:00:00', 1.50, 2.00, 15.00, 12),
-('Standard Jour Weekend', 'standard', 'weekend_day', '06:00:00', '20:00:00', 2.50, 4.00, 30.00, 24),
-('Standard Nuit Weekend', 'standard', 'weekend_night', '20:00:00', '06:00:00', 1.50, 2.00, 15.00, 12),
-('PMR Jour Semaine', 'disabled', 'weekday_day', '06:00:00', '18:00:00', 1.00, 1.50, 12.50, 12),
-('Électrique Jour Semaine', 'electric', 'weekday_day', '06:00:00', '18:00:00', 3.00, 4.50, 35.00, 8),
-('Réservée Jour Semaine', 'reserved', 'weekday_day', '06:00:00', '18:00:00', 5.00, 6.00, 50.00, 24),
-('Compact Jour Semaine', 'compact', 'weekday_day', '06:00:00', '18:00:00', 1.50, 2.50, 20.00, 12);
+-- Compte admin secondaire
+('Super', 'Admin', 'admin@parkfinder.com', '+33987654321', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', 'active', TRUE, TRUE, NOW());
 
 -- Message de confirmation
 SELECT 'Base de données créée avec succès!' as message;
+
+/*
+=================================================================
+COMPTES DE TEST CRÉÉS
+=================================================================
+
+ADMINISTRATEURS:
+- Email: admin@parkingsystem.com | Mot de passe: admin123
+- Email: admin@parkfinder.com | Mot de passe: admin123
+
+UTILISATEURS NORMAUX:
+- Email: marie.martin@email.com | Mot de passe: admin123
+- Email: pierre.dupont@email.com | Mot de passe: admin123
+- Email: sophie.bernard@email.com | Mot de passe: admin123
+- Email: lucas.moreau@email.com | Mot de passe: admin123
+
+Note: Tous les mots de passe sont hashés avec PASSWORD_DEFAULT
+Le mot de passe en clair pour tous les comptes est: admin123
+=================================================================
+*/
+
+-- Insertion des places de parking de test avec tarifs
+INSERT INTO parking_spots (spot_number, spot_type, zone_section, status, hourly_rate, description, is_active) VALUES
+('A01', 'standard', 'A', 'available', 2.50, 'Place standard rez-de-chaussée', TRUE),
+('A02', 'standard', 'A', 'available', 2.50, 'Place standard rez-de-chaussée', TRUE),
+('A03', 'handicapped', 'A', 'available', 2.00, 'Place PMR avec accès facile', TRUE),
+('A04', 'electric', 'A', 'available', 3.00, 'Borne de recharge véhicule électrique', TRUE),
+('A05', 'standard', 'A', 'available', 2.50, 'Place standard rez-de-chaussée', TRUE),
+('B01', 'standard', 'B', 'available', 2.75, 'Place standard premier étage', TRUE),
+('B02', 'compact', 'B', 'available', 2.25, 'Place pour véhicule compact', TRUE),
+('B03', 'large', 'B', 'available', 3.25, 'Place réservée membres VIP', TRUE),
+('C01', 'standard', 'C', 'available', 2.50, 'Place près de l\'entrée', TRUE),
+('C02', 'standard', 'C', 'reserved', 2.50, 'Place près de l\'entrée', TRUE);
