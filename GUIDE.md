@@ -46,15 +46,6 @@ Guide complet pour utiliser le système de gestion de parking ParkFinder.
 - Email : marie.martin@email.com
 - Mot de passe : admin123
 
--Admin : Alexandre Martin
-
-Email: admin@parkfinder.com
-Mot de passe: admin123
-
--Utilisateurs :
-
-Marie Dubois (marie.dubois@email.com / user123)
-
 ## Interface utilisateur
 
 ### Navigation principale
